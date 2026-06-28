@@ -1,0 +1,70 @@
+[33mcommit b248e473d5ef7ff4b3db4e552ca0b0b68748b066[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: angel <angelsingh2199@gmail.com>
+Date:   Fri Mar 13 09:14:26 2026 +0530
+
+    feat: add video encoding pipeline and improve UI/UX
+    
+    - Introduce Python-based video encoder (FFmpeg wrapper) for adaptive HLS streaming
+    - Add Cloudflare R2 integration for direct segment uploads during encoding
+    - Implement upload cancellation with thread interruption in Mux and R2 services
+    - Enhance UI with modern login screen, tab-based access control, and detailed help
+    - Update system design documentation and improve .gitignore for project hygiene
+    - Bump application version to 6.0.0 across distribution artifacts
+
+.gitattributes
+.gitignore
+README.md
+SYSTEM_DESIGN.md
+dist/EduCasterLive/EduCasterLive.exe
+dist/EduCasterLive/EduCasterLive.ico
+dist/EduCasterLive/app/.jpackage.xml
+dist/EduCasterLive/app/EduCasterLive.cfg
+dist/EduCasterLive/app/classes/com/educater/auth/AuthService.class
+dist/EduCasterLive/app/classes/com/educater/auth/PasswordUtil.class
+dist/EduCasterLive/app/classes/com/educater/config/ConfigService.class
+dist/EduCasterLive/app/classes/com/educater/config/HardcodedConfig.class
+dist/EduCasterLive/app/classes/com/educater/db/MongoService.class
+dist/EduCasterLive/app/classes/com/educater/model/StreamRecord.class
+dist/EduCasterLive/app/classes/com/educater/model/UploadRecord.class
+dist/EduCasterLive/app/classes/com/educater/model/User.class
+dist/EduCasterLive/app/classes/com/educater/mux/JwtUtil.class
+dist/EduCasterLive/app/classes/com/educater/mux/LiveStreamInfo.class
+dist/EduCasterLive/app/classes/com/educater/mux/MuxApi.class
+dist/EduCasterLive/app/classes/com/educater/mux/UploadInfo.class
+dist/EduCasterLive/app/classes/com/educater/net/NetUtil.class
+dist/EduCasterLive/app/classes/com/educater/ui/AdminLoginWindow.class
+dist/EduCasterLive/app/classes/com/educater/ui/AdminSettingsWindow$SecretField.class
+dist/EduCasterLive/app/classes/com/educater/ui/AdminSettingsWindow.class
+dist/EduCasterLive/app/classes/com/educater/ui/HelpWindow.class
+dist/EduCasterLive/app/classes/com/educater/ui/MainApp.class
+dist/EduCasterLive/app/classes/com/educater/ui/StartupLoginWindow.class
+dist/EduCasterLive/app/classes/com/educater/ui/TeacherLoginWindow.class
+dist/EduCasterLive/app/classes/com/educater/ui/UploadWindow.class
+dist/EduCasterLive/app/classes/images/100ms.png
+dist/EduCasterLive/app/classes/images/br31tech_logo.png
+dist/EduCasterLive/app/classes/images/cloudflare_logo.png
+dist/EduCasterLive/app/classes/images/cloudinary.png
+dist/EduCasterLive/app/classes/images/educaster.png
+dist/EduCasterLive/app/classes/images/eduorbit.png
+dist/EduCasterLive/app/classes/images/mux.png
+dist/EduCasterLive/app/classes/schema.sql
+dist/EduCasterLive/app/classes/style.css
+dist/EduCasterLive/app/classes/web/mux_player_template.html
+dist/EduCasterLive/app/educater-live-mux-3.5.0.jar
+dist/EduCasterLive/app/maven-archiver/pom.properties
+dist/EduCasterLive/app/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst
+dist/EduCasterLive/app/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst
+dist/EduCasterLive/app/original-educater-live-mux-1.0.0.jar
+dist/EduCasterLive/runtime/bin/WinFallbackLookup.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-console-l1-1-0.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-datetime-l1-1-0.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-debug-l1-1-0.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-errorhandling-l1-1-0.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-file-l1-1-0.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-file-l1-2-0.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-file-l2-1-0.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-handle-l1-1-0.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-heap-l1-1-0.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-interlocked-l1-1-0.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-libraryloader-l1-1-0.dll
+dist/EduCasterLive/runtime/bin/api-ms-win-core-localization-l1-2-0.d
