@@ -28,12 +28,15 @@ import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class PublishLiveWindow {
 
     private final Consumer<String> onChapterSaved;
     private String existingChapterId = null;
+    private final Map<String, JsonObject> currentChaptersMap = new HashMap<>();
 
     public PublishLiveWindow(Consumer<String> onChapterSaved) {
         this.onChapterSaved = onChapterSaved;
@@ -42,6 +45,7 @@ public class PublishLiveWindow {
     private static class CourseItem {
         String id;
         String title;
+        JsonArray rawChapters;
         @Override
         public String toString() { return title; }
     }
@@ -66,6 +70,7 @@ public class PublishLiveWindow {
 
     public void show() {
         Stage stage = new Stage();
+        UIUtils.setIcon(stage);
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Add New Chapter");
 
@@ -84,10 +89,34 @@ public class PublishLiveWindow {
         // Title
         Label lblTitle = new Label("Title");
         lblTitle.setStyle("-fx-font-weight: bold;");
-        TextField txtTitle = new TextField();
-        txtTitle.setPromptText("Chapter 1: Introduction");
-        txtTitle.setStyle("-fx-padding: 8; -fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #e2e8f0; -fx-background-color: white;");
-        VBox boxTitle = new VBox(5, lblTitle, txtTitle);
+        ComboBox<String> cmbTitle = new ComboBox<>();
+        cmbTitle.setEditable(true);
+        cmbTitle.setPromptText("Type or select a chapter...");
+        cmbTitle.setMaxWidth(Double.MAX_VALUE);
+        cmbTitle.setStyle("-fx-padding: 3; -fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #e2e8f0; -fx-background-color: white;");
+        
+        cmbTitle.setCellFactory(lv -> new ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(item);
+                    JsonObject chap = currentChaptersMap.get(item);
+                    if (chap != null && chap.has("is_live") && !chap.get("is_live").isJsonNull() && chap.get("is_live").getAsBoolean()) {
+                        javafx.scene.shape.Circle dot = new javafx.scene.shape.Circle(4, javafx.scene.paint.Color.RED);
+                        setGraphic(dot);
+                        setContentDisplay(javafx.scene.control.ContentDisplay.RIGHT);
+                    } else {
+                        setGraphic(null);
+                    }
+                }
+            }
+        });
+        
+        VBox boxTitle = new VBox(5, lblTitle, cmbTitle);
 
         // Description
         Label lblDesc = new Label("Description");
@@ -138,7 +167,7 @@ public class PublishLiveWindow {
         VBox boxEnd = new VBox(5, lblEnd, txtEnd);
         HBox.setHgrow(boxEnd, Priority.ALWAYS);
         
-        HBox boxTiming = new HBox(15, boxStart, boxEnd);
+       
 
         // Video Source
         Label lblVid = new Label("Video Source (Optional if chapter has multiple lessons)");
@@ -164,7 +193,8 @@ public class PublishLiveWindow {
                 btnUseUrl.setStyle("-fx-background-radius: 20; -fx-padding: 5 15; -fx-background-color: transparent;");
             }
         });
-
+ HBox boxTiming = new HBox(15, boxStart, boxEnd);
+ 
         HBox boxVidBtns = new HBox(btnUseUrl, btnUpload);
         boxVidBtns.setAlignment(Pos.CENTER);
         boxVidBtns.setStyle("-fx-background-color: #f1f5f9; -fx-background-radius: 20; -fx-padding: 2;");
@@ -248,17 +278,24 @@ public class PublishLiveWindow {
         boxBtnCreate.setAlignment(Pos.CENTER_RIGHT);
         boxBtnCreate.setPadding(new Insets(10, 0, 0, 0));
 
-        content.getChildren().addAll(
-                boxCourse, boxTitle, boxDesc, boxPosDur, boxTiming,
-                boxVidGroup, boxDemo, boxDownload, boxLive, boxAttGroup, boxPublished,
-                boxBtnCreate
-        );
+        VBox leftCol = new VBox(15);
+        leftCol.setPrefWidth(400);
+        leftCol.getChildren().addAll(boxCourse, boxTitle, boxDesc, boxPosDur, boxTiming, boxVidGroup);
+
+        VBox rightCol = new VBox(15);
+        rightCol.setPrefWidth(400);
+        rightCol.getChildren().addAll(boxDemo, boxDownload, boxLive, boxPublished, boxAttGroup, boxBtnCreate);
+
+        HBox splitContent = new HBox(30, leftCol, rightCol);
+        splitContent.setAlignment(Pos.TOP_LEFT);
+
+        content.getChildren().add(splitContent);
 
         ScrollPane scrollPane = new ScrollPane(content);
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #f8fafc;");
 
-        Scene scene = new Scene(scrollPane, 450, 750);
+        Scene scene = new Scene(scrollPane, 900, 600);
         stage.setScene(scene);
 
         // Load courses logic
@@ -281,6 +318,7 @@ public class PublishLiveWindow {
                             CourseItem c = new CourseItem();
                             c.id = obj.has("id") ? obj.get("id").getAsString() : "";
                             c.title = obj.has("title") ? obj.get("title").getAsString() : "";
+                            c.rawChapters = obj.has("chapters") && obj.get("chapters").isJsonArray() ? obj.getAsJsonArray("chapters") : new JsonArray();
                             courses.add(c);
                         }
                         Platform.runLater(() -> {
@@ -297,75 +335,76 @@ public class PublishLiveWindow {
         
         cmbCourse.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
-                // Fetch existing live chapter
                 TaskManager.submitHeavyTask(() -> {
                     try {
-                        String url = ConfigService.getLmsBackendUrl() + "/api/chapters?courseId=" + newVal.id;
-                        HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
-                        HttpRequest.Builder reqBuilder = HttpRequest.newBuilder().uri(URI.create(url)).GET();
-                        String token = ConfigService.getLmsJwtToken();
-                        if (token != null && !token.isBlank()) reqBuilder.header("Authorization", "Bearer " + token);
+                        JsonArray data = newVal.rawChapters != null ? newVal.rawChapters : new JsonArray();
+                        JsonObject existingLive = null;
+                        int maxPosition = 0;
                         
-                        HttpResponse<String> res = client.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
-                        if (res.statusCode() == 200) {
-                            JsonObject parsed = JsonParser.parseString(res.body()).getAsJsonObject();
-                            if (parsed.has("data") && parsed.get("data").isJsonArray()) {
-                                JsonArray data = parsed.getAsJsonArray("data");
-                                JsonObject existingLive = null;
-                                int maxPosition = 0;
-                                
-                                for (JsonElement el : data) {
-                                    JsonObject chap = el.getAsJsonObject();
-                                    if (chap.has("position") && !chap.get("position").isJsonNull()) {
-                                        try {
-                                            int p = chap.get("position").getAsInt();
-                                            if (p > maxPosition) maxPosition = p;
-                                        } catch (Exception ignored) {}
-                                    }
-                                    if (existingLive == null && chap.has("is_live") && !chap.get("is_live").isJsonNull() && chap.get("is_live").getAsBoolean()) {
-                                        existingLive = chap;
-                                    }
-                                }
-                                
-                                if (existingLive != null) {
-                                    final JsonObject existing = existingLive;
-                                    Platform.runLater(() -> {
-                                        existingChapterId = existing.has("id") ? existing.get("id").getAsString() : null;
-                                        txtTitle.setText(existing.has("title") && !existing.get("title").isJsonNull() ? existing.get("title").getAsString() : "");
-                                        txtDesc.setText(existing.has("description") && !existing.get("description").isJsonNull() ? existing.get("description").getAsString() : "");
-                                        txtPos.setText(existing.has("position") && !existing.get("position").isJsonNull() ? existing.get("position").getAsString() : "1");
-                                        txtStart.setText(defaultStart);
-                                        txtEnd.setText(defaultEnd);
-                                        chkDemo.setSelected(existing.has("is_demo") && !existing.get("is_demo").isJsonNull() && existing.get("is_demo").getAsBoolean());
-                                        chkDownload.setSelected(existing.has("allow_download") && !existing.get("allow_download").isJsonNull() && existing.get("allow_download").getAsBoolean());
-                                        chkPublished.setSelected(existing.has("is_published") && !existing.get("is_published").isJsonNull() && existing.get("is_published").getAsBoolean());
-                                        chkLive.setSelected(true);
-                                        btnCreate.setText("Update Chapter");
-                                    });
-                                    return; 
-                                } else {
-                                    final int nextPos = maxPosition + 1;
-                                    Platform.runLater(() -> {
-                                        existingChapterId = null;
-                                        txtTitle.setText("Chapter " + nextPos + ": Live Session");
-                                        txtDesc.setText("");
-                                        txtPos.setText(String.valueOf(nextPos));
-                                        txtStart.setText(defaultStart);
-                                        txtEnd.setText(defaultEnd);
-                                        chkDemo.setSelected(false);
-                                        chkDownload.setSelected(false);
-                                        chkPublished.setSelected(true);
-                                        chkLive.setSelected(true);
-                                        btnCreate.setText("Create Chapter");
-                                    });
-                                    return;
-                                }
+                        List<String> chapterTitles = new ArrayList<>();
+                        currentChaptersMap.clear();
+
+                        for (JsonElement el : data) {
+                            JsonObject chap = el.getAsJsonObject();
+                            String chapTitle = chap.has("title") && !chap.get("title").isJsonNull() ? chap.get("title").getAsString() : "";
+                            if (!chapTitle.isEmpty()) {
+                                chapterTitles.add(chapTitle);
+                                currentChaptersMap.put(chapTitle, chap);
+                            }
+                            if (chap.has("position") && !chap.get("position").isJsonNull()) {
+                                try {
+                                    int p = chap.get("position").getAsInt();
+                                    if (p > maxPosition) maxPosition = p;
+                                } catch (Exception ignored) {}
+                            }
+                            if (existingLive == null && chap.has("is_live") && !chap.get("is_live").isJsonNull() && chap.get("is_live").getAsBoolean()) {
+                                existingLive = chap;
                             }
                         }
+                        
+                        if (existingLive != null) {
+                            final JsonObject existing = existingLive;
+                            Platform.runLater(() -> {
+                                cmbTitle.getItems().setAll(chapterTitles);
+                                existingChapterId = existing.has("id") ? existing.get("id").getAsString() : null;
+                                cmbTitle.getEditor().setText(existing.has("title") && !existing.get("title").isJsonNull() ? existing.get("title").getAsString() : "");
+                                txtDesc.setText(existing.has("description") && !existing.get("description").isJsonNull() ? existing.get("description").getAsString() : "");
+                                txtPos.setText(existing.has("position") && !existing.get("position").isJsonNull() ? existing.get("position").getAsString() : "1");
+                                txtStart.setText(defaultStart);
+                                txtEnd.setText(defaultEnd);
+                                chkDemo.setSelected(existing.has("is_demo") && !existing.get("is_demo").isJsonNull() && existing.get("is_demo").getAsBoolean());
+                                chkDownload.setSelected(existing.has("allow_download") && !existing.get("allow_download").isJsonNull() && existing.get("allow_download").getAsBoolean());
+                                chkPublished.setSelected(existing.has("is_published") && !existing.get("is_published").isJsonNull() && existing.get("is_published").getAsBoolean());
+                                chkLive.setSelected(true);
+                                btnCreate.setText("Update Chapter");
+                            });
+                            return; 
+                        } else {
+                            final int nextPos = maxPosition + 1;
+                            Platform.runLater(() -> {
+                                cmbTitle.getItems().setAll(chapterTitles);
+                                existingChapterId = null;
+                                cmbTitle.getEditor().setText("Chapter " + nextPos + ": Live Session");
+                                txtDesc.setText("");
+                                txtPos.setText(String.valueOf(nextPos));
+                                txtStart.setText(defaultStart);
+                                txtEnd.setText(defaultEnd);
+                                chkDemo.setSelected(false);
+                                chkDownload.setSelected(false);
+                                chkPublished.setSelected(true);
+                                chkLive.setSelected(true);
+                                btnCreate.setText("Create Chapter");
+                            });
+                            return;
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
                         // Default fallback
                         Platform.runLater(() -> {
+                            currentChaptersMap.clear();
+                            cmbTitle.getItems().clear();
                             existingChapterId = null;
-                            txtTitle.setText("Live Session: " + newVal.title);
+                            cmbTitle.getEditor().setText("Live Session: " + newVal.title);
                             txtDesc.setText("");
                             txtPos.setText("1");
                             txtStart.setText(defaultStart);
@@ -376,10 +415,26 @@ public class PublishLiveWindow {
                             chkLive.setSelected(true);
                             btnCreate.setText("Create Chapter");
                         });
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
                     }
                 });
+            }
+        });
+
+        // Listener for when user selects an existing title from the drop-down
+        cmbTitle.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null && currentChaptersMap.containsKey(newVal)) {
+                JsonObject existing = currentChaptersMap.get(newVal);
+                existingChapterId = existing.has("id") ? existing.get("id").getAsString() : null;
+                txtDesc.setText(existing.has("description") && !existing.get("description").isJsonNull() ? existing.get("description").getAsString() : "");
+                txtPos.setText(existing.has("position") && !existing.get("position").isJsonNull() ? existing.get("position").getAsString() : "1");
+                chkDemo.setSelected(existing.has("is_demo") && !existing.get("is_demo").isJsonNull() && existing.get("is_demo").getAsBoolean());
+                chkDownload.setSelected(existing.has("allow_download") && !existing.get("allow_download").isJsonNull() && existing.get("allow_download").getAsBoolean());
+                chkPublished.setSelected(existing.has("is_published") && !existing.get("is_published").isJsonNull() && existing.get("is_published").getAsBoolean());
+                chkLive.setSelected(existing.has("is_live") && !existing.get("is_live").isJsonNull() && existing.get("is_live").getAsBoolean());
+                btnCreate.setText("Update Chapter");
+            } else {
+                existingChapterId = null;
+                btnCreate.setText("Create Chapter");
             }
         });
 
@@ -389,7 +444,7 @@ public class PublishLiveWindow {
                 new Alert(Alert.AlertType.WARNING, "Select a course").show();
                 return;
             }
-            String title = txtTitle.getText().trim();
+            String title = cmbTitle.getEditor().getText().trim();
             if (title.isEmpty()) {
                 new Alert(Alert.AlertType.WARNING, "Title is required").show();
                 return;

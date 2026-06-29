@@ -23,6 +23,7 @@ public class TeacherLoginWindow {
 
     public void show() {
         Stage stage = new Stage();
+        UIUtils.setIcon(stage);
         stage.setTitle("Teacher Login");
         stage.initModality(Modality.APPLICATION_MODAL);
         try {

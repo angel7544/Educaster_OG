@@ -46,6 +46,7 @@ public class CreateLessonWindow {
 
     public void show() {
         Stage stage = new Stage();
+        UIUtils.setIcon(stage);
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("New Lesson Details");
 

@@ -28,6 +28,7 @@ public class UploadWindow {
 
     public void show() {
         Stage stage = new Stage();
+        UIUtils.setIcon(stage);
         stage.setTitle("Direct Upload");
         stage.initModality(Modality.APPLICATION_MODAL);
 

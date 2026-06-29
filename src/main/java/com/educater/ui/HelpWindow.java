@@ -17,6 +17,7 @@ public class HelpWindow {
 
     public void show() {
         Stage stage = new Stage();
+        UIUtils.setIcon(stage);
         stage.setTitle("EduCaster Help & Guide");
         stage.initModality(Modality.APPLICATION_MODAL);
 

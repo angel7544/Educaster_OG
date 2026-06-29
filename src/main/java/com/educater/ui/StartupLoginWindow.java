@@ -36,6 +36,7 @@ public class StartupLoginWindow {
     public void showAtStartup(Window owner) {
 
         Stage stage = new Stage();
+        UIUtils.setIcon(stage);
         stage.setTitle("EduCaster Live – Login");
         if (owner != null) stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);

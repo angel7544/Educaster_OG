@@ -108,9 +108,7 @@ public class MainApp extends Application {
 
         Scene scene = new Scene(rootPane, 1100, 700);
         stage.setTitle("EduCaster Live – Mux Desktop");
-        try {
-            stage.getIcons().add(new Image(getClass().getResource("/images/educaster.png").toExternalForm()));
-        } catch (Exception ignored) { }
+        UIUtils.setIcon(stage);
         stage.setScene(scene);
         stage.show();
         // Show login window on startup
@@ -454,6 +452,7 @@ public class MainApp extends Application {
 
     private void showInfo() {
         Stage stage = new Stage();
+        UIUtils.setIcon(stage);
         stage.setTitle("EduCaster Live – About & Help");
         stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
         stage.setResizable(true); // Made responsive

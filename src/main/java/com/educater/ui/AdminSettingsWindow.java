@@ -41,6 +41,7 @@ public class AdminSettingsWindow {
 
     public void show() {
         Stage stage = new Stage();
+        UIUtils.setIcon(stage);
         stage.setTitle("Admin Settings");
         stage.initModality(Modality.APPLICATION_MODAL);
         try {

@@ -22,6 +22,7 @@ public class AdminLoginWindow {
 
     public void show() {
         Stage stage = new Stage();
+        UIUtils.setIcon(stage);
         stage.setTitle("Admin Login");
         stage.initModality(Modality.APPLICATION_MODAL);
         try {
